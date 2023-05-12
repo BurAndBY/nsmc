@@ -21,6 +21,8 @@ if(DEPENDS_DIR)
   list(APPEND CMAKE_PREFIX_PATH ${DEPENDS_DIR})
 endif()
 
+set(VERBOSE ON)
+
 # Set CORE_BUILD_DIR
 set(CORE_BUILD_DIR build)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -81,7 +83,7 @@ dependent_option(ENABLE_INTERNAL_SPDLOG "Enable internal spdlog?")
 dependent_option(ENABLE_INTERNAL_TAGLIB "Enable internal taglib?")
 
 # Internal Depends - supported on UNIX platforms
-if(UNIX)
+if(UNIX OR SWITCH)
   option(FFMPEG_PATH        "Path to external ffmpeg?" "")
   option(ENABLE_INTERNAL_FSTRCMP "Enable internal fstrcmp?" OFF)
   option(ENABLE_INTERNAL_DAV1D "Enable internal dav1d?" OFF)
@@ -350,6 +352,7 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
   add_library(lib${APP_NAME_LC} STATIC)
   add_dependencies(lib${APP_NAME_LC} compileinfo)
   target_link_libraries(lib${APP_NAME_LC} PUBLIC compileinfo_obj)
+  
 else()
   add_library(lib${APP_NAME_LC} STATIC $<TARGET_OBJECTS:compileinfo>)
 endif()
@@ -370,7 +373,14 @@ core_add_subdirs_from_filelist(${CMAKE_SOURCE_DIR}/cmake/treedata/common/*.txt
 core_add_optional_subdirs_from_filelist(${CMAKE_SOURCE_DIR}/cmake/treedata/optional/common/*.txt
                                         ${CMAKE_SOURCE_DIR}/cmake/treedata/optional/${CORE_SYSTEM_NAME}/*.txt)
 
-target_link_libraries(lib${APP_NAME_LC} PUBLIC ${core_DEPENDS} ${SYSTEM_LDFLAGS} ${DEPLIBS} ${CMAKE_DL_LIBS})
+if(NOT SWITCH)
+  set(DL_LIBS ${CMAKE_DL_LIBS})
+else()
+  # libnx doesn't support dynamic module loading
+  set(DL_LIBS "")
+endif()
+
+target_link_libraries(lib${APP_NAME_LC} PUBLIC ${core_DEPENDS} ${SYSTEM_LDFLAGS} ${DEPLIBS} ${DL_LIBS})
 set_target_properties(lib${APP_NAME_LC} PROPERTIES PROJECT_LABEL "xbmc")
 source_group_by_folder(lib${APP_NAME_LC} RELATIVE ${CMAKE_SOURCE_DIR}/xbmc)
 if(WIN32)
